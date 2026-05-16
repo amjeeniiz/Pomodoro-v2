@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#18181C" />
+  <title>โปโมโดโร 🍅</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #18181C; font-family: 'Sarabun', sans-serif; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+```
+const WORK_OPTIONS = [5, 10, 15, 25, 45, 60];
+const BREAK_OPTIONS = [5, 10, 15, 20, 30, 60];
+const pad = (n) => String(n).padStart(2, "0");
+
+function App() {
+  const [screen, setScreen] = useState("setup");
+  const [workMin, setWorkMin] = useState(25);
+  const [breakMin, setBreakMin] = useState(5);
+  const [phase, setPhase] = useState("work");
+  const [round, setRound] = useState(1);
+  const [secondsLeft, setSecondsLeft] = useState(0);
+
+  const intervalRef = useRef(null);
+  const phaseRef = useRef("work");
+  const roundRef = useRef(1);
+  const workMinRef = useRef(25);
+  const breakMinRef = useRef(5);
+  const phaseEndTimeRef = useRef(null);
+
+  const isWork = phase === "work";
+
+  const colors = {
+    bg: "#18181C", surface: "#202026", surfaceAlt: "#28282F",
+    border: "#30303A", muted: "#62627A", text: "#DDDDF0", textDim: "#88889A",
+    work: "#C8906A", workSoft: "#2A1F18", workDim: "#7A4A28",
+    break: "#6A9EB0", breakSoft: "#182028", breakDim: "#325E70",
+  };
+
+  const accent = isWork ? colors.work : colors.break;
+  const accentSoft = isWork ? colors.workSoft : colors.breakSoft;
+  const accentDim = isWork ? colors.workDim : colors.breakDim;
+  const totalSeconds = (isWork ? workMin : breakMin) * 60;
+  const progress = secondsLeft / totalSeconds;
+  const minutes = Math.floor(secondsLeft / 60);
+  const seconds = secondsLeft % 60;
+  const R = 108;
+  const circ = 2 * Math.PI * R;
+  const dash = circ * progress;
+
+  function syncFromNow() {
+    if (!phaseEndTimeRef.current) return;
+    let remaining = Math.round((phaseEndTimeRef.current - Date.now()) / 1000);
+    if (remaining > 0) { setSecondsLeft(remaining); return; }
+    let elapsed = -remaining;
+    let curPhase = phaseRef.current;
+    let curRound = roundRef.current;
+    while (elapsed >= 0) {
+      const phaseDuration = curPhase === "work" ? workMinRef.current * 60 : breakMinRef.current * 60;
+      if (elapsed < phaseDuration) { remaining = phaseDuration - elapsed; break; }
+      elapsed -= phaseDuration;
+      const nextPhase = curPhase === "work" ? "break" : "work";
+      if (nextPhase === "work") curRound += 1;
+      curPhase = nextPhase;
+    }
+    phaseRef.current = curPhase;
+    roundRef.current = curRound;
+    setPhase(curPhase);
+    setRound(curRound);
+    setSecondsLeft(remaining);
+    phaseEndTimeRef.current = Date.now() + remaining * 1000;
+  }
+
+  function start() {
+    workMinRef.current = workMin;
+    breakMinRef.current = breakMin;
+    phaseRef.current = "work";
+    roundRef.current = 1;
+    const duration = workMin * 60;
+    phaseEndTimeRef.current = Date.now() + duration * 1000;
+    setPhase("work"); setRound(1); setSecondsLeft(duration); setScreen("running");
+  }
+
+  function stop() {
+    clearInterval(intervalRef.current);
+    phaseEndTimeRef.current = null;
+    setScreen("setup");
+  }
+
+  useEffect(() => {
+    if (screen !== "running") return;
+    clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(syncFromNow, 500);
+    return () => clearInterval(intervalRef.current);
+  }, [screen]);
+
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState === "visible" && screen === "running") syncFromNow();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [screen]);
+
+  if (screen === "setup") return (
+    <div style={{ minHeight:"100vh", background:colors.bg, display:"flex", alignItems:"center", justifyContent:"center", padding:20, fontFamily:"'Sarabun',sans-serif" }}>
+      <div style={{ background:colors.surface, border:`1px solid ${colors.border}`, borderRadius:22, padding:"30px 26px 34px", width:"100%", maxWidth:370, display:"flex", flexDirection:"column", gap:20 }}>
+
+        <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+          <span style={{ fontSize:38, lineHeight:1 }}>🍅</span>
+          <div>
+            <div style={{ fontSize:21, fontWeight:800, color:colors.text, letterSpacing:"-0.3px" }}>โปโมโดโร</div>
+            <div style={{ fontSize:13, color:colors.muted, marginTop:3 }}>ตั้งค่าแล้วปล่อยให้มันทำงาน</div>
+          </div>
+        </div>
+
+        <div style={{ height:1, background:colors.border }} />
+
+        <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+          <div style={{ fontSize:11, fontWeight:700, color:colors.muted, letterSpacing:"0.6px", textTransform:"uppercase" }}>🧠 ช่วงทำงาน</div>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:7 }}>
+            {WORK_OPTIONS.map(m => (
+              <button key={m} onClick={() => setWorkMin(m)} style={{ padding:"9px 4px", borderRadius:10, fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:"inherit", transition:"all 0.15s", background:workMin===m ? colors.work : colors.surfaceAlt, color:workMin===m ? "#FFF4EE" : colors.textDim, border:`1px solid ${workMin===m ? colors.work : colors.border}` }}>
+                {m}<span style={{ fontSize:10, marginLeft:2, opacity:0.65 }}>นาที</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+          <div style={{ fontSize:11, fontWeight:700, color:colors.muted, letterSpacing:"0.6px", textTransform:"uppercase" }}>☕ ช่วงพัก</div>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:7 }}>
+            {BREAK_OPTIONS.map(m => (
+              <button key={m} onClick={() => setBreakMin(m)} style={{ padding:"9px 4px", borderRadius:10, fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:"inherit", transition:"all 0.15s", background:breakMin===m ? colors.break : colors.surfaceAlt, color:breakMin===m ? "#EEF6FF" : colors.textDim, border:`1px solid ${breakMin===m ? colors.break : colors.border}` }}>
+                {m}<span style={{ fontSize:10, marginLeft:2, opacity:0.65 }}>นาที</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ height:1, background:colors.border }} />
+
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:10, padding:"11px 16px", borderRadius:12, background:colors.surfaceAlt, border:`1px solid ${colors.border}`, fontSize:14 }}>
+          <span style={{ color:colors.work, fontWeight:600 }}>🧠 {workMin} นาที</span>
+          <span style={{ color:colors.muted, fontSize:12 }}>→</span>
+          <span style={{ color:colors.break, fontWeight:600 }}>☕ {breakMin} นาที</span>
+          <span style={{ color:colors.muted, fontSize:12 }}>→ วนซ้ำ</span>
+        </div>
+
+        <button onClick={start} style={{ width:"100%", padding:15, border:"none", borderRadius:13, fontSize:16, fontWeight:700, color:"#160E08", cursor:"pointer", fontFamily:"inherit", background:colors.work }}>
+          เริ่มเลย →
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Sarabun',sans-serif", background: isWork ? "linear-gradient(160deg,#1E1610 0%,#18181C 65%)" : "linear-gradient(160deg,#101820 0%,#18181C 65%)", transition:"background 1.2s ease" }}>
+      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:18 }}>
+
+        <div style={{ padding:"8px 22px", borderRadius:24, fontSize:15, fontWeight:700, background:accentSoft, color:accent, border:`1px solid ${accentDim}` }}>
+          {isWork ? "🧠 กำลังทำงาน" : "☕ พักผ่อน"}
+        </div>
+
+        <div style={{ fontSize:13, color:colors.muted, fontWeight:500 }}>รอบที่ {round}</div>
+
+        <div style={{ position:"relative", width:256, height:256 }}>
+          <svg width={256} height={256} viewBox="0 0 256 256">
+            <circle cx={128} cy={128} r={120} fill="none" stroke={accentSoft} strokeWidth={1} />
+            <circle cx={128} cy={128} r={R} fill="none" stroke={accentSoft} strokeWidth={7} />
+            <circle cx={128} cy={128} r={R} fill="none" stroke={accent} strokeWidth={7} strokeLinecap="round"
+              strokeDasharray={`${dash} ${circ}`} strokeDashoffset={0} transform="rotate(-90 128 128)"
+              style={{ transition:"stroke-dasharray 0.6s linear, stroke 1.2s ease" }} />
+          </svg>
+          <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center" }}>
+            <div style={{ fontSize:60, fontWeight:800, letterSpacing:"-3px", lineHeight:1, fontVariantNumeric:"tabular-nums", color:accent, transition:"color 1.2s ease" }}>
+              {pad(minutes)}:{pad(seconds)}
+            </div>
+            {!isWork && <div style={{ fontSize:13, color:accentDim, marginTop:6 }}>😌 พักผ่อนสักครู่</div>}
+          </div>
+        </div>
+
+        <div style={{ display:"flex", gap:24, alignItems:"center", padding:"12px 28px", borderRadius:14, background:colors.surface, border:`1px solid ${colors.border}` }}>
+          <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:3 }}>
+            <span style={{ fontSize:11, color:colors.muted, fontWeight:600 }}>ทำงาน</span>
+            <span style={{ fontSize:15, fontWeight:700, color:colors.work }}>{workMin} นาที</span>
+          </div>
+          <div style={{ width:1, height:24, background:colors.border }} />
+          <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:3 }}>
+            <span style={{ fontSize:11, color:colors.muted, fontWeight:600 }}>พัก</span>
+            <span style={{ fontSize:15, fontWeight:700, color:colors.break }}>{breakMin} นาที</span>
+          </div>
+        </div>
+
+        <button onClick={stop} style={{ padding:"11px 36px", background:"transparent", border:`1px solid ${colors.border}`, borderRadius:12, fontSize:14, fontWeight:600, color:colors.muted, cursor:"pointer", fontFamily:"inherit" }}>
+          ⏹ หยุด
+        </button>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+```
+
+  </script>
+</body>
+</html>
